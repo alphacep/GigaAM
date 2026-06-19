@@ -306,6 +306,7 @@ class AudioDataset(torch.utils.data.Dataset):
         item: Union[str, np.ndarray, Tensor],
         duration: float,
         text: Optional[str] = None,
+        offset: Optional[float] = None,
     ) -> None:
         norm_text: Optional[str] = None
         tokens: Optional[List[int]] = None
@@ -316,7 +317,11 @@ class AudioDataset(torch.utils.data.Dataset):
                 tokens = self.encode(norm_text)
         self.samples.append(
             AudioDatasetSample(
-                item=item, duration=duration, text=norm_text, tokens=tokens
+                item=item,
+                duration=duration,
+                text=norm_text,
+                tokens=tokens,
+                offset=offset,
             )
         )
 
@@ -340,7 +345,12 @@ class AudioDataset(torch.utils.data.Dataset):
                 pth = Path(row["path"])
                 path = str((pth if pth.is_absolute() else data_dir / pth).resolve())
                 text = row["transcription"] if "transcription" in row else None
-                self._append_sample(path, duration, text=text)
+                offset = (
+                    float(row["offset"])
+                    if row.get("offset") not in (None, "")
+                    else None
+                )
+                self._append_sample(path, duration, text=text, offset=offset)
 
         self._print_filtered(n_total, dur_total, n_filt, dur_filt)
 
@@ -372,9 +382,23 @@ class AudioDataset(torch.utils.data.Dataset):
         return len(self.samples)
 
     @staticmethod
-    def _load_audio(item: Union[str, np.ndarray, Tensor]) -> Tensor:
+    def _load_audio(
+        item: Union[str, np.ndarray, Tensor],
+        offset: Optional[float] = None,
+        duration: Optional[float] = None,
+    ) -> Tensor:
         if isinstance(item, str):
-            wav, sr = torchaudio.load(item)
+            frame_offset, num_frames = 0, -1
+            # When the manifest provides an offset, load only the
+            # [offset, offset + duration] slice of the file.
+            if offset is not None:
+                src_sr = sf.info(item).samplerate
+                frame_offset = int(round(offset * src_sr))
+                if duration is not None:
+                    num_frames = int(round(duration * src_sr))
+            wav, sr = torchaudio.load(
+                item, frame_offset=frame_offset, num_frames=num_frames
+            )
             if wav.shape[0] > 1:
                 wav = wav.mean(dim=0, keepdim=True)
             wav = wav.squeeze(0)
@@ -389,7 +413,9 @@ class AudioDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx: int) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         sample = self.samples[idx]
-        wav = self._load_audio(sample.item)
+        wav = self._load_audio(
+            sample.item, offset=sample.offset, duration=sample.duration
+        )
 
         if self.return_tokens:
             assert sample.tokens is not None

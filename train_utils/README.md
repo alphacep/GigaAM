@@ -14,11 +14,19 @@ cd train_utils
 
 ## Data format
 
-TSV manifest (tab-separated columns): `path`, `duration`, and optionally `transcription`. Paths may be absolute or relative to the manifest directory. `transcription` may be omitted for audio-only manifests.
+TSV manifest (tab-separated columns): `path`, `duration`, and optionally `transcription` and `offset`. Paths may be absolute or relative to the manifest directory. `transcription` may be omitted for audio-only manifests.
 
 ```
 path	duration	transcription
 audio/0001.wav	3.21	привет как дела
+```
+
+When an `offset` column is present (start time in seconds), only the `[offset, offset + duration]` slice of the audio file is loaded. This lets several segments share one file. Rows without an `offset` value load the whole file as before.
+
+```
+path	offset	duration	transcription
+audio/long_0001.wav	0.00	3.21	привет как дела
+audio/long_0001.wav	3.21	2.74	у меня всё хорошо
 ```
 
 ## Training

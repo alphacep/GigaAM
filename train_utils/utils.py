@@ -3,6 +3,7 @@ import re
 import time
 import warnings
 from concurrent.futures import ThreadPoolExecutor
+from types import MethodType
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 

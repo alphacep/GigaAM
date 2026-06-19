@@ -11,6 +11,7 @@ class AudioDatasetSample:
     duration: float
     text: Optional[str] = None
     tokens: Optional[List[int]] = None
+    offset: Optional[float] = None
 
 
 @dataclass

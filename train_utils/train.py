@@ -15,7 +15,6 @@ from ssl_finetune import (
 from torch.utils.data import DataLoader
 from utils import (
     EpochTimeLogger,
-    StepProgressBar,
     build_exp_name,
     prepare_experiment_dirs,
 )
@@ -38,12 +37,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--num_workers", type=int, default=4)
     p.add_argument("--lr", type=float, default=2e-5)
     p.add_argument("--weight_decay", type=float, default=1e-2)
-    p.add_argument("--max_duration", type=float, default=20.0)
+    p.add_argument("--max_duration", type=float, default=15.0)
     p.add_argument("--min_duration", type=float, default=0.1)
     p.add_argument("--accumulate_grad_batches", type=int, default=1)
     p.add_argument("--gradient_clip_val", type=float, default=1.0)
-    p.add_argument("--precision", default="32")
-    p.add_argument("--accelerator", default="auto")
+    p.add_argument("--precision", default=32)
+    p.add_argument("--accelerator", default="gpu")
     p.add_argument("--devices", type=int, default=1)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--activation_checkpointing", action="store_true")
@@ -51,14 +50,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--raw_text", action="store_true")
     p.add_argument("--warmup_ratio", type=float, default=0.1)
     p.add_argument("--max_epochs", type=int, default=None)
-    p.add_argument("--val_check_interval", type=float, default=1.0)
+    p.add_argument("--val_check_interval", type=float, default=0.1)
     p.add_argument("--max_steps", type=int, default=None)
     p.add_argument("--val_check_steps", type=int, default=None)
     p.add_argument("--val_first_batches", type=int, default=None)
-    p.add_argument("--log_every_n_steps", type=int, default=25)
+    p.add_argument("--log_every_n_steps", type=int, default=200)
     p.add_argument("--disable_tqdm", action="store_true", default=False)
     p.add_argument("--skip_initial_validation", action="store_true", default=False)
-    p.add_argument("--save_top_k", type=int, default=2)
+    p.add_argument("--save_top_k", type=int, default=-1)
     p.add_argument("--disable_spec_augment", action="store_true")
     p.add_argument("--freq_masks", type=int, default=2)
     p.add_argument("--freq_width", type=int, default=27)
@@ -194,10 +193,11 @@ def main():
 
     ckpt_cb = ModelCheckpoint(
         dirpath=model_dir,
+        verbose=True,
         filename=f"gigaam-{args.model_name}-" + "{epoch:02d}-{step:06d}-{val_wer:.4f}",
         monitor="val_wer",
         mode="min",
-        save_top_k=max(1, args.save_top_k),
+        save_top_k=args.save_top_k,
     )
 
     strategy = "auto"
@@ -217,11 +217,6 @@ def main():
         gradient_clip_val=args.gradient_clip_val,
         callbacks=(
             [ckpt_cb, EpochTimeLogger()]
-            + (
-                [StepProgressBar(args.val_check_steps if step_mode else None)]
-                if not args.disable_tqdm
-                else []
-            )
         ),
         logger=TensorBoardLogger(save_dir=tb_dir, name=exp_name),
         log_every_n_steps=args.log_every_n_steps,
