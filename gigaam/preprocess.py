@@ -47,7 +47,8 @@ class SpecScaler(nn.Module):
     """
 
     def forward(self, x: Tensor) -> Tensor:
-        return torch.log(x.clamp_(1e-9, 1e9))
+#        return torch.log(x.clamp_(1e-9, 1e9))
+         return torch.log(x + 2**-24)
 
 
 class FeatureExtractor(nn.Module):
@@ -95,4 +96,5 @@ class FeatureExtractor(nn.Module):
         """
         Extract Log-mel spectrogram features from the input audio signal.
         """
-        return self.featurizer(input_signal), self.out_len(length)
+        x = input_signal + 3e-5 * torch.randn_like(input_signal)
+        return self.featurizer(x), self.out_len(length)

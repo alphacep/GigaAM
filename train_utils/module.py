@@ -26,7 +26,7 @@ class GigaAMFineTuner(pl.LightningModule):
         weight_decay: float = 0.01,
         warmup_ratio: float = 0.1,
         log_every_n_steps: int = 10,
-        spec_augment: bool = False,
+        spec_augment: bool = True,
         freq_masks: int = 2,
         freq_width: int = 27,
         time_masks: int = 2,
@@ -283,7 +283,7 @@ class GigaAMFineTuner(pl.LightningModule):
             params.append(p)
         opt = torch.optim.AdamW(params, lr=self._lr, weight_decay=self._wd)
         total = self.trainer.estimated_stepping_batches
-        warmup = max(1, int(self._warmup_ratio * total))
+        warmup = max(0, int(self._warmup_ratio * total))
         decay = max(1, total - warmup)
         print(f"  LR: {warmup} warmup + {decay} cosine = {total} steps")
 

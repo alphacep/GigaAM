@@ -38,7 +38,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--lr", type=float, default=2e-5)
     p.add_argument("--weight_decay", type=float, default=1e-2)
     p.add_argument("--max_duration", type=float, default=15.0)
-    p.add_argument("--min_duration", type=float, default=0.1)
+    p.add_argument("--min_duration", type=float, default=0.5)
     p.add_argument("--accumulate_grad_batches", type=int, default=1)
     p.add_argument("--gradient_clip_val", type=float, default=1.0)
     p.add_argument("--precision", default=32)
@@ -48,9 +48,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--activation_checkpointing", action="store_true")
     p.add_argument("--freeze_encoder_epochs", type=int, default=0)
     p.add_argument("--raw_text", action="store_true")
-    p.add_argument("--warmup_ratio", type=float, default=0.1)
+    p.add_argument("--warmup_ratio", type=float, default=0.0)
     p.add_argument("--max_epochs", type=int, default=None)
-    p.add_argument("--val_check_interval", type=float, default=0.1)
+    p.add_argument("--val_check_interval", type=float, default=0.05)
     p.add_argument("--max_steps", type=int, default=None)
     p.add_argument("--val_check_steps", type=int, default=None)
     p.add_argument("--val_first_batches", type=int, default=None)
@@ -161,7 +161,7 @@ def main():
     train_dl = DataLoader(
         train_ds,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=False,
         drop_last=True,
         collate_fn=train_ds.collate_fn,
         **dl_kw,
